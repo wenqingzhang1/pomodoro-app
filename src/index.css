@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+:root {
+  --color-bg: #f5f0eb;
+  --color-bg-start: #f0e9e2;
+  --color-bg-end: #faf6f2;
+  --color-surface: rgba(210, 195, 180, 0.35);
+  --color-surface-hover: rgba(210, 195, 180, 0.55);
+  --color-text: #5c5548;
+  --color-text-secondary: #7a7265;
+  --color-muted: #a0988a;
+  --color-accent: #c4a99a;
+  --color-accent-secondary: #a8b5a0;
+  --color-accent-tertiary: #9aa8b5;
+  --color-glass-border: rgba(255, 255, 255, 0.25);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #1c1c1e;
+    --color-bg-start: #18181a;
+    --color-bg-end: #222224;
+    --color-surface: rgba(120, 110, 100, 0.25);
+    --color-surface-hover: rgba(120, 110, 100, 0.4);
+    --color-text: #d4cdc0;
+    --color-text-secondary: #b0a89a;
+    --color-muted: #7a756a;
+    --color-accent: #c4a99a;
+    --color-accent-secondary: #8b9a85;
+    --color-accent-tertiary: #85939e;
+    --color-glass-border: rgba(255, 255, 255, 0.08);
+  }
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+    'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: transparent;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+.window-drag {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.glass-bg {
+  background: linear-gradient(
+    135deg,
+    var(--color-bg-start),
+    var(--color-bg-end)
+  );
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid var(--color-glass-border);
+}
