@@ -1,128 +1,152 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  DEFAULT_DURATIONS,
+  STORAGE_KEY,
+  advanceTimer,
+  applyDurations,
+  pauseTimer,
+  resetTimer,
+  restoreTimerSnapshot,
+  startTimer,
+  switchTimerMode,
+} from './timerCore'
+import type {
+  TimerDurations,
+  TimerMode,
+  TimerSettings,
+  TimerSnapshot,
+} from './timerCore'
 
-export type TimerMode = 'focus' | 'shortBreak' | 'longBreak'
-export type TimerStatus = 'idle' | 'running' | 'paused'
+export type {
+  ThemePreference,
+  TimerDurations,
+  TimerMode,
+  TimerSettings,
+  TimerSnapshot,
+  TimerStatus,
+} from './timerCore'
+export { DEFAULT_DURATIONS, SESSIONS_PER_CYCLE } from './timerCore'
 
-const DURATIONS: Record<TimerMode, number> = {
-  focus: 25 * 60,
-  shortBreak: 5 * 60,
-  longBreak: 15 * 60,
+interface CompletionDetails {
+  completedMode: TimerMode
+  nextMode: TimerMode
+  settings: TimerSettings
 }
 
-export const SESSIONS_PER_CYCLE = 4
-
-function getNextMode(mode: TimerMode, completedSessions: number): TimerMode {
-  if (mode === 'focus') {
-    return completedSessions % SESSIONS_PER_CYCLE === 0 ? 'longBreak' : 'shortBreak'
-  }
-  return 'focus'
+interface UseTimerOptions {
+  onComplete?: (details: CompletionDetails) => void
 }
 
-function playNotification() {
+function readInitialSnapshot(): TimerSnapshot {
   try {
-    const ctx = new AudioContext()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(880, ctx.currentTime)
-    osc.frequency.setValueAtTime(660, ctx.currentTime + 0.15)
-    gain.gain.setValueAtTime(0.3, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.45)
-    osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + 0.45)
+    return restoreTimerSnapshot(window.localStorage.getItem(STORAGE_KEY), Date.now())
   } catch {
-    // audio not available
+    return restoreTimerSnapshot(null, Date.now())
   }
 }
 
-function useTimer() {
-  const [mode, setMode] = useState<TimerMode>('focus')
-  const [status, setStatus] = useState<TimerStatus>('idle')
-  const [timeLeft, setTimeLeft] = useState(DURATIONS.focus)
-  const [completedSessions, setCompletedSessions] = useState(0)
-  const intervalRef = useRef<number | null>(null)
-  const modeRef = useRef(mode)
-  const completedSessionsRef = useRef(completedSessions)
+function playCompletionSound() {
+  try {
+    const AudioContextClass = window.AudioContext
+    const context = new AudioContextClass()
+    const oscillator = context.createOscillator()
+    const gain = context.createGain()
+    oscillator.connect(gain)
+    gain.connect(context.destination)
+    oscillator.type = 'sine'
+    oscillator.frequency.setValueAtTime(784, context.currentTime)
+    oscillator.frequency.setValueAtTime(988, context.currentTime + 0.16)
+    gain.gain.setValueAtTime(0.18, context.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.5)
+    oscillator.start()
+    oscillator.stop(context.currentTime + 0.5)
+    oscillator.addEventListener('ended', () => void context.close(), { once: true })
+  } catch {
+    // Audio can be unavailable before the first user gesture.
+  }
+}
 
-  useEffect(() => { modeRef.current = mode }, [mode])
-  useEffect(() => { completedSessionsRef.current = completedSessions }, [completedSessions])
+function useTimer(options: UseTimerOptions = {}) {
+  const [snapshot, setSnapshot] = useState<TimerSnapshot>(readInitialSnapshot)
+  const snapshotRef = useRef(snapshot)
+  const onCompleteRef = useRef(options.onComplete)
 
-  const totalTime = DURATIONS[mode]
+  useEffect(() => {
+    onCompleteRef.current = options.onComplete
+  }, [options.onComplete])
 
-  const clearTimer = useCallback(() => {
-    if (intervalRef.current !== null) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
+  const commit = useCallback((next: TimerSnapshot) => {
+    snapshotRef.current = next
+    setSnapshot(next)
   }, [])
 
-  const switchMode = useCallback((newMode: TimerMode) => {
-    clearTimer()
-    setMode(newMode)
-    setTimeLeft(DURATIONS[newMode])
-    setStatus('idle')
-  }, [clearTimer])
+  const syncFromClock = useCallback(() => {
+    const current = snapshotRef.current
+    const next = advanceTimer(current, Date.now())
+    if (next === current || (next.timeLeft === current.timeLeft && next.status === current.status)) return
 
-  const start = useCallback(() => {
-    if (timeLeft <= 0) return
-    setStatus('running')
-  }, [timeLeft])
-
-  const pause = useCallback(() => {
-    clearTimer()
-    setStatus('paused')
-  }, [clearTimer])
-
-  const reset = useCallback(() => {
-    clearTimer()
-    setTimeLeft(DURATIONS[mode])
-    setStatus('idle')
-  }, [clearTimer, mode])
-
-  // Handle timer completion — runs once when timeLeft hits 0 while running
-  useEffect(() => {
-    if (status !== 'running' || timeLeft > 0) return
-
-    playNotification()
-    clearTimer()
-
-    const currentMode = modeRef.current
-    const currentSessions = completedSessionsRef.current
-    const newSessions = currentMode === 'focus' ? currentSessions + 1 : currentSessions
-    const nextMode = getNextMode(currentMode, newSessions)
-
-    if (currentMode === 'focus') {
-      setCompletedSessions(newSessions)
+    const completed = current.status === 'running' && next.status === 'idle' && next.mode !== current.mode
+    commit(next)
+    if (completed) {
+      if (current.settings.soundEnabled) playCompletionSound()
+      onCompleteRef.current?.({
+        completedMode: current.mode,
+        nextMode: next.mode,
+        settings: current.settings,
+      })
     }
-    setMode(nextMode)
-    setTimeLeft(DURATIONS[nextMode])
-    setStatus('idle')
-  }, [timeLeft, status, clearTimer])
+  }, [commit])
 
-  // Timer tick interval
   useEffect(() => {
-    if (status !== 'running') {
-      clearTimer()
-      return
+    snapshotRef.current = snapshot
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot))
+    } catch {
+      // The timer remains usable when storage is unavailable.
     }
+  }, [snapshot])
 
-    intervalRef.current = window.setInterval(() => {
-      setTimeLeft((prev) => (prev <= 1 ? 0 : prev - 1))
-    }, 1000)
-
-    return clearTimer
-  }, [status, clearTimer])
-
-  // Cleanup on unmount
   useEffect(() => {
-    return () => clearTimer()
-  }, [clearTimer])
+    if (snapshot.status !== 'running') return
+    syncFromClock()
+    const intervalId = window.setInterval(syncFromClock, 250)
+    const handleVisibility = () => syncFromClock()
+    window.addEventListener('focus', handleVisibility)
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', handleVisibility)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [snapshot.status, syncFromClock])
+
+  const start = useCallback(() => commit(startTimer(snapshotRef.current, Date.now())), [commit])
+  const pause = useCallback(() => commit(pauseTimer(snapshotRef.current, Date.now())), [commit])
+  const reset = useCallback(() => commit(resetTimer(snapshotRef.current)), [commit])
+  const switchMode = useCallback((mode: TimerMode) => {
+    commit(switchTimerMode(snapshotRef.current, mode))
+  }, [commit])
+  const updateDurations = useCallback((durations: TimerDurations) => {
+    commit(applyDurations(snapshotRef.current, durations))
+  }, [commit])
+  const restoreDefaultDurations = useCallback(() => {
+    commit(applyDurations(snapshotRef.current, { ...DEFAULT_DURATIONS }))
+  }, [commit])
+  const updateSettings = useCallback((settings: Partial<TimerSettings>) => {
+    const current = snapshotRef.current
+    commit({ ...current, settings: { ...current.settings, ...settings } })
+  }, [commit])
 
   return {
-    mode, status, timeLeft, totalTime, completedSessions,
-    switchMode, start, pause, reset,
+    ...snapshot,
+    totalTime: snapshot.durations[snapshot.mode],
+    start,
+    pause,
+    reset,
+    switchMode,
+    updateDurations,
+    restoreDefaultDurations,
+    updateSettings,
   }
 }
 

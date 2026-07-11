@@ -1,12 +1,18 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge as e, ipcRenderer as t } from "electron";
 //#region electron/preload.ts
-contextBridge.exposeInMainWorld("electronAPI", {
-	toggleAlwaysOnTop: () => ipcRenderer.invoke("toggle-always-on-top"),
-	getAlwaysOnTop: () => ipcRenderer.invoke("get-always-on-top"),
-	onAlwaysOnTopChanged: (callback) => {
-		const handler = (_event, value) => callback(value);
-		ipcRenderer.on("always-on-top-changed", handler);
-		return () => ipcRenderer.removeListener("always-on-top-changed", handler);
+e.exposeInMainWorld("electronAPI", {
+	toggleAlwaysOnTop: () => t.invoke("toggle-always-on-top"),
+	getAlwaysOnTop: () => t.invoke("get-always-on-top"),
+	hideWindow: () => t.send("hide-window"),
+	showNotification: (e) => t.invoke("show-notification", e),
+	updateTrayStatus: (e) => t.send("update-tray-status", e),
+	onAlwaysOnTopChanged: (e) => {
+		let n = (t, n) => e(n);
+		return t.on("always-on-top-changed", n), () => t.removeListener("always-on-top-changed", n);
+	},
+	onTimerCommand: (e) => {
+		let n = (t, n) => e(n);
+		return t.on("timer-command", n), () => t.removeListener("timer-command", n);
 	}
 });
 //#endregion

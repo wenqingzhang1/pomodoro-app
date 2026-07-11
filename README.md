@@ -1,73 +1,42 @@
-# React + TypeScript + Vite
+# 番茄钟
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一款轻盈、可靠的 Apple 风格桌面番茄钟，使用 Electron、React、TypeScript、Vite 和 Tailwind CSS 构建。
 
-Currently, two official plugins are available:
+## 功能
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- 25 分钟专注、5 分钟短休、15 分钟长休，时长可自定义
+- 基于真实截止时间的可靠计时，支持暂停、恢复和重启恢复
+- 跟随系统、浅色、深色三种主题
+- 柔和提示音与系统原生通知
+- 系统托盘倒计时及开始、暂停、重置、置顶操作
+- 无边框毛玻璃窗口，适配减少动画偏好
+- 键盘快捷键：`空格` 开始/暂停、`R` 重置、`1/2/3` 切换模式、`Esc` 隐藏
 
-## React Compiler
+## 开发
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run electron:dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+只预览浏览器界面：
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+## 质量检查
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+## 打包
+
+```bash
+npm run electron:build
+```
+
+Windows 默认生成 NSIS 安装包。关闭主窗口会隐藏到系统托盘，使用托盘菜单中的“退出番茄钟”才会完全结束应用。
