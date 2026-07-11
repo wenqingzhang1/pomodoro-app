@@ -10,6 +10,7 @@
     "electron:build": "vite build && electron-builder",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test": "vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -34,7 +35,8 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
     "vite": "^8.0.10",
-    "vite-plugin-electron": "^0.29.1"
+    "vite-plugin-electron": "^0.29.1",
+    "vitest": "^4.1.10"
   },
   "build": {
     "appId": "com.pomodoro.app",
@@ -44,6 +46,7 @@
       "dist-electron/**/*"
     ],
     "win": {
+      "icon": "build/icon.png",
       "target": "nsis"
     },
     "nsis": {
